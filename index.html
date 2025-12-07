@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CNC Tool Manager</title>
+    <style>
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #1a1a1a;
+            --accent: #ff6b6b;
+            --text-primary: #ffffff;
+            --text-secondary: #b0b0b0;
+            --card-bg: #2a2a2a;
+            --border: #404040;
+        }
+        [data-theme="light"] {
+            --bg-primary: #f5f5f5;
+            --bg-secondary: #ffffff;
+            --accent: #ff4757;
+            --text-primary: #2c2c2c;
+            --text-secondary: #5a5a5a;
+            --card-bg: #f0f0f0;
+            --border: #e0e0e0;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .container {
+            max-width: 100vw;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            min-height: 100vh;
+        }
+        .header {
+            text-align: center;
+            padding: 1.5rem 0;
+            animation: slideDown 0.6s ease-out;
+        }
+        .alpha-title {
+            font-size: 2.5rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--accent), #ff8e8e);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        .theme-btn {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            width: 50px;
+            height: 50px;
+            border: none;
+            border-radius: 50%;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 1.2rem;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+        .theme-btn:hover { transform: scale(1.1); box-shadow: 0 6px 20px rgba(0,0,0,0.4); }
+        .content-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            animation: fadeInUp 0.8s ease-out;
+        }
+        .btn-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .main-btn {
+            height: 60px;
+            border: none;
+            border-radius: 15px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, var(--bg-secondary), var(--card-bg));
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        .main-btn::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+        .main-btn:hover::before { left: 100%; }
+        .main-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+        .main-btn:active { transform: translateY(-1px); }
+        .output-area {
+            min-height: 300px;
+            background: var(--bg-secondary);
+            border-radius: 20px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            border: 2px solid var(--border);
+            transition: all 0.3s ease;
+        }
+        .tool-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            animation: slideInRight 0.4s ease-out;
+            border-left: 4px solid var(--accent);
+        }
+        .tool-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 8px;
+            background: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+        }
+        .tool-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .tool-name { font-weight: 700; font-size: 1.1rem; }
+        .tool-desc { color: var(--text-secondary); font-size: 0.9rem; }
+        .delete-btn {
+            width: 35px;
+            height: 35px;
+            border: none;
+            border-radius: 50%;
+            background: #ff4757;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            transition: all 0.2s ease;
+        }
+        .delete-btn:hover { background: #ff3742; transform: scale(1.1); }
+        .add-btn {
+            background: linear-gradient(135deg, var(--accent), #ff8e8e);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 25px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .add-btn:hover { transform: scale(1.05); box-shadow: 0 8px 20px rgba(255,107,107,0.4); }
+        .modal {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        .modal.active { opacity: 1; visibility: visible; }
+        .modal-content {
+            background: var(--bg-secondary);
+            border-radius: 20px;
+            padding: 2rem;
+            max-width: 90%;
+            max-height: 80%;
+            overflow-y: auto;
+            transform: scale(0.8);
+            transition: transform 0.3s ease;
+            border: 2px solid var(--border);
+        }
+        .modal.active .modal-content { transform: scale(1); }
+        .modal-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 1.5rem; text-align: center; }
+        .form-group { margin-bottom: 1.5rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 600; }
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 1rem;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+        .form-group input:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        .modal-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 1.5rem;
+        }
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover { background: #ff3742; transform: translateY(-2px); }
+        .btn-secondary {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 2px solid var(--border);
+            padding: 1rem 2rem;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .btn-secondary:hover {
+            background: var(--border);
+            color: var(--text-primary);
+            transform: translateY(-2px);
+        }
+        .checkbox-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: var(--card-bg);
+            border-radius: 10px;
+            transition: all 0.2s ease;
+        }
+        .checkbox-item:hover { transform: translateX(5px); }
+        .checkbox-custom {
+            width: 24px;
+            height: 24px;
+            border: 2px solid var(--border);
+            border-radius: 4px;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s ease;
+        }
+        .checkbox-custom.checked {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+        .checkbox-custom.checked::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-weight: bold;
+            font-size: 1rem;
+        }
+        .calculator {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+        .calc-input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .calc-input-group label { font-weight: 600; }
+        .calc-input {
+            padding: 1rem;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 1.1rem;
+        }
+        .calc-result {
+            background: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 15px;
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        .sub-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+        }
+        .sub-btn {
+            height: 50px;
+            border: none;
+            border-radius: 12px;
+            background: var(--card-bg);
+            color: var(--text-primary);
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .sub-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        .clear-btn {
+            background: #ff4757;
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .clear-btn:hover { background: #ff3742; transform: translateY(-2px); }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideInRight { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: translateX(0); } }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body data-theme="dark">
+    <button class="theme-btn" onclick="toggleTheme()">🌙</button>
+    
+    <div class="container">
+        <div class="header">
+            <h1 class="alpha-title">Alpha сайт</h1>
+            <div style="height: 200px; background: linear-gradient(135deg, var(--accent), #ff8e8e); border-radius: 20px; display: flex; align-items: center; justify-content: center; margin: 1rem 0;">
+                <div style="width: 150px; height: 200px; background: #ff6b6b; border-radius: 15px;"></div>
+            </div>
+        </div>
+
+        <div class="content-area">
+            <div class="btn-grid">
+                <button class="main-btn" onclick="showTools()">Данные инструмента</button>
+                <button class="main-btn" onclick="showDefects()">Дефекты</button>
+                <button class="main-btn" onclick="showChecklist()">Чек лист</button>
+                <button class="main-btn" onclick="showCalculator()">Разное</button>
+            </div>
+            
+            <div class="output-area" id="outputArea">
+                <p style="text-align: center; color: var(--text-secondary);">Выберите раздел</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно подтверждения удаления -->
+    <div class="modal" id="deleteModal">
+        <div class="modal-content">
+            <div class="modal-title" id="deleteTitle">Удалить карточку?</div>
+            <div class="modal-buttons">
+                <button class="btn-secondary" onclick="closeModal('deleteModal')">Нет</button>
+                <button class="btn-primary" onclick="confirmDelete()">Да</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно добавления инструмента -->
+    <div class="modal" id="addToolModal">
+        <div class="modal-content">
+            <div class="modal-title">Добавить новое</div>
+            <div class="form-group">
+                <label>Фото инструмента</label>
+                <input type="file" id="toolPhoto" accept="image/*">
+            </div>
+            <div class="form-group">
+                <label>Название инструмента</label>
+                <input type="text" id="toolName" placeholder="Например: VNGG 160402 ML">
+            </div>
+            <div class="form-group">
+                <label>Информация о инструменте</label>
+                <textarea id="toolInfo" rows="3" placeholder="Углы, покрытие, применение..."></textarea>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-secondary" onclick="closeModal('addToolModal')">Отмена</button>
+                <button class="btn-primary" onclick="saveTool()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Тестовые данные
+        let tools = [
+            { id: 1, name: 'VNGG 160402 ML', info: 'Углы 93-35', photo: null },
+            { id: 2, name: 'DNMG150604', info: 'Углы 93-55', photo: null }
+        ];
+        let currentDeleteId = null;
+        let checklists = {};
+        const checklistItems = [
+            'Параллельность', 'Блоки затянуты', 'Инструмент привязан по X гл.шп',
+            'Инструмент привязан по Z гл.шп', 'Инструмент привязан по X пр.шп',
+            'Инструмент привязан по Z пр.шп', 'Осевой обкатан', 'Кулачки затянуты'
+        ];
+
+        // Переключение темы
+        function toggleTheme() {
+            const body = document.body;
+            const isDark = body.getAttribute('data-theme') === 'dark';
+            body.setAttribute('data-theme', isDark ? 'light' : 'dark');
+            document.querySelector('.theme-btn').textContent = isDark ? ☀️' : '🌙';
+        }
+
+        // Показать инструменты
+        function showTools() {
+            const output = document.getElementById('outputArea');
+            output.innerHTML = `
+                <button class="add-btn" onclick="openAddToolModal()">➕ Добавить инструмент</button>
+                <div id="toolsList" style="display: flex; flex-direction: column; gap: 1rem;"></div>
+            `;
+            renderTools();
+        }
+
+        // Рендер инструментов
+        function renderTools() {
+            const container = document.getElementById('toolsList');
+            container.innerHTML = tools.map(tool => `
+                <div class="tool-card">
+                    <div class="tool-icon">🛠️</div>
+                    <div class="tool-info">
+                        <div class="tool-name">${tool.name}</div>
+                        <div class="tool-desc">${tool.info}</div>
+                    </div>
+                    <button class="delete-btn" onclick="deleteTool(${tool.id})">×</button>
+                </div>
+            `).join('');
+        }
+
+        // Удаление инструмента
+        function deleteTool(id) {
+            currentDeleteId = id;
+            document.getElementById('deleteTitle').textContent = `Удалить карточку с ${tools.find(t => t.id === id).name}?`;
+            document.getElementById('deleteModal').classList.add('active');
+        }
+
+        function confirmDelete() {
+            tools = tools.filter(t => t.id !== currentDeleteId);
+            renderTools();
+            closeModal('deleteModal');
+        }
+
+        // Модальное окно добавления
+        function openAddToolModal() {
+            document.getElementById('addToolModal').classList.add('active');
+        }
+
+        function saveTool() {
+            const name = document.getElementById('toolName').value;
+            const info = document.getElementById('toolInfo').value;
+            if (name && info) {
+                const photoFile = document.getElementById('toolPhoto').files[0];
+                tools.push({
+                    id: Date.now(),
+                    name,
+                    info,
+                    photo: photoFile ? URL.createObjectURL(photoFile) : null
+                });
+                closeModal('addToolModal');
+                renderTools();
+                // Очистка формы
+                document.getElementById('toolName').value = '';
+                document.getElementById('toolInfo').value = '';
+                document.getElementById('toolPhoto').value = '';
+            }
+        }
+
+        // Дефекты
+        function showDefects() {
+            document.getElementById('outputArea').innerHTML = `
+                <div class="sub-buttons">
+                    <button class="sub-btn" onclick="showDefectInfo('Дробление', 'Нужно снизить обороты или увеличить подачу.')">Дробление</button>
+                    <button class="sub-btn" onclick="showDefectInfo('Вырывы', 'Нужно увеличить обороты или уменьшить подачу.')">Вырывы</button>
+                    <button class="sub-btn" onclick="showDefectInfo('Налипы', 'Увеличить скорость или уменьшить подачу. Проверь в какую сторону вращение. Если налипы от сверла убедись что смазка хорошо попадала на инструмент.')">Налипы</button>
+                </div>
+            `;
+        }
+
+        function showDefectInfo(title, text) {
+            document.getElementById('outputArea').innerHTML = `
+                <div style="text-align: center;">
+                    <div class="modal-title">${title}</div>
+                    <p style="line-height: 1.6; color: var(--text-secondary);">${text}</p>
+                    <button class="main-btn" onclick="showDefects()" style="margin-top: 1.5rem;">Назад</button>
+                </div>
+            `;
+        }
+
+        // Чеклист
+        function showChecklist() {
+            checklists = {}; // Сброс
+            const output = document.getElementById('outputArea');
+            output.innerHTML = `
+                <div class="checkbox-list" id="checklist">${checklistItems.map((item, i) => `
+                    <div class="checkbox-item">
+                        <div class="checkbox-custom" onclick="toggleChecklist(${i})" id="check${i}"></div>
+                        <span>${item}</span>
+                    </div>
+                `).join('')}</div>
+                <button class="clear-btn" onclick="clearChecklist()">Очистить</button>
+            `;
+        }
+
+        function toggleChecklist(index) {
+            const el = document.getElementById(`check${index}`);
+            el.classList.toggle('checked');
+            checklists[index] = el.classList.contains('checked');
+        }
+
+        function clearChecklist() {
+            checklistItems.forEach((_, i) => {
+                document.getElementById(`check${i}`).classList.remove('checked');
+            });
+            checklists = {};
+        }
+
+        // Калькулятор
+        function showCalculator() {
+            document.getElementById('outputArea').innerHTML = `
+                <div class="calculator">
+                    <div class="modal-title">Расчёт нулевой точки для крыльчатки по размеру 2+-0.3</div>
+                    <div class="calc-input-group">
+                        <label>Min значение</label>
+                        <input class="calc-input" type="number" id="minVal" min="0" max="5" step="0.01" oninput="calculateZeroPoint()">
+                    </div>
+                    <div class="calc-input-group">
+                        <label>Max значение</label>
+                        <input class="calc-input" type="number" id="maxVal" min="0" max="5" step="0.01" oninput="calculateZeroPoint()">
+                    </div>
+                    <div class="calc-result" id="zeroPointResult">Введите значения</div>
+                </div>
+            `;
+        }
+
+        function calculateZeroPoint() {
+            const min = parseFloat(document.getElementById('minVal').value) || 0;
+            const max = parseFloat(document.getElementById('maxVal').value) || 0;
+            const result = ((min + max) / 2) - 2;
+            document.getElementById('zeroPointResult').textContent = `Нулевая точка = ${result.toFixed(3)}`;
+        }
+
+        // Утилиты модальных окон
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        // Закрытие модалок по клику на фон
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) closeModal(modal.id);
+            });
+        });
+    </script>
+</body>
+</html>
